@@ -1,0 +1,14 @@
+services:
+  mediastore:
+    build:
+      context: .
+    ports:
+      - 8080:8080
+    env_file:
+      - .env
+    networks:
+      - portfolio-net
+
+networks:
+  portfolio-net:
+    external: true

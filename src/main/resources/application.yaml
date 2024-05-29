@@ -1,0 +1,7 @@
+spring:
+  application:
+    name: mediastore
+  rabbitmq:
+    host: host.docker.internal
+    username: seiji
+    password: foobar
