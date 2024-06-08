@@ -1,5 +1,6 @@
 package dev.sxxxi.mediastore.data.dto
 
-data class ImageUrlGetResponse(
-    val url: String
-)
+interface ImageUrlGetResponse {
+    data class Success(val url: String) : ImageUrlGetResponse
+    data class Error(val code: Int, val message: String): ImageUrlGetResponse
+}

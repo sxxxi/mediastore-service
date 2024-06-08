@@ -1,7 +1,7 @@
 package dev.sxxxi.mediastore.service
 
-import dev.sxxxi.mediastore.data.Media
 import dev.sxxxi.mediastore.data.Services
+import dev.sxxxi.mediastore.data.dto.Media
 
 interface MediaStoreService {
     fun store(serviceName: Services, media: Media): String

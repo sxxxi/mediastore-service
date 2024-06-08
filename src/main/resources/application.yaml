@@ -1,7 +1,22 @@
 spring:
   application:
     name: mediastore
-  rabbitmq:
-    host: host.docker.internal
-    username: seiji
-    password: foobar
+
+rabbitmq:
+  config:
+    host: ${AMQP_HOST:localhost}
+    port: ${AMQP_PORT:5672}
+    username: ${AMQP_USERNAME:guest}
+    password: ${AMQP_PASSWORD:guest}
+    vHost: ${AMQP_VHOST:/}
+  receivers:
+    media:
+      queue: ${MEDIA_QUEUE_NAME:q_media}
+
+aws:
+  region: ${AWS_REGION:us-east-1}
+
+storage:
+  bucket: ${MEDIA_STORE_BUCKET}
+  bucketRoot: ${BUCKET_ROOT}
+  urlValidityMinutes: ${URL_VALIDITY_MINUTES:5}

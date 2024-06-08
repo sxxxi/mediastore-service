@@ -1,7 +1,10 @@
 package dev.sxxxi.mediastore.service
 
-import dev.sxxxi.mediastore.data.Media
 import dev.sxxxi.mediastore.data.Services
+import dev.sxxxi.mediastore.data.dto.Media
+import dev.sxxxi.mediastore.data.properties.MediaStoreServiceProps
+import org.slf4j.Logger
+import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.stereotype.Service
 import software.amazon.awssdk.core.sync.RequestBody
 import software.amazon.awssdk.services.s3.S3Client
@@ -18,7 +21,13 @@ import java.time.LocalDateTime
 import java.time.ZoneOffset
 
 @Service
-class MediaStoreServiceImpl(private val s3: S3Client) : MediaStoreService {
+class MediaStoreServiceImpl(
+    private val s3: S3Client,
+    private val logger: Logger
+) : MediaStoreService {
+
+    @Autowired
+    lateinit var props: MediaStoreServiceProps
 
     override fun store(serviceName: Services, media: Media): String {
         if (media.contentType !in SUPPORTED_MEDIA_TYPES)
@@ -27,9 +36,9 @@ class MediaStoreServiceImpl(private val s3: S3Client) : MediaStoreService {
             it[0] to it[1]
         }
         val fileName = genFileName(media.body)
-        val path = Path.of(ROOT_DIR, serviceName.path, directory, "$fileName.$suffix").toString()
+        val path = Path.of(props.bucketRoot, serviceName.path, directory, "$fileName.$suffix").toString()
         val putObjectRequest = PutObjectRequest.builder()
-            .bucket(BUCKET_NAME)
+            .bucket(props.bucket)
             .key(path)
             .build()
 
@@ -56,11 +65,11 @@ class MediaStoreServiceImpl(private val s3: S3Client) : MediaStoreService {
             val getRequest = GetObjectPresignRequest.builder()
                 .getObjectRequest(
                     GetObjectRequest.builder()
-                        .bucket(BUCKET_NAME)
+                        .bucket(props.bucket)
                         .key(key)
                         .build()
                 )
-                .signatureDuration(Duration.ofMinutes(PRE_SIGNED_URL_VALIDITY_MINUTES))
+                .signatureDuration(Duration.ofMinutes(props.urlValidityMinutes))
                 .build()
             return signer.presignGetObject(getRequest).url().toString()
         }
@@ -69,7 +78,7 @@ class MediaStoreServiceImpl(private val s3: S3Client) : MediaStoreService {
     override fun delete(key: String) {
         s3.deleteObject { builder ->
             builder
-                .bucket(BUCKET_NAME)
+                .bucket(props.bucket)
                 .key(key)
                 .build()
         }
@@ -78,9 +87,6 @@ class MediaStoreServiceImpl(private val s3: S3Client) : MediaStoreService {
     // TODO: Create a mechanism to switch S3 client region with environment variables for
     //  easy deployments to other regions. The bucket name too.
     companion object {
-        private const val ROOT_DIR = "portfolio"
-        private const val BUCKET_NAME = "seijiakakabe-991617069"
-        private const val PRE_SIGNED_URL_VALIDITY_MINUTES = 1L
         private val SUPPORTED_MEDIA_TYPES = arrayOf("image/jpeg", "image/png", "video/mp4", "video/mpeg")
     }
 }
