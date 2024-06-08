@@ -1,4 +1,4 @@
-package dev.sxxxi.mediastore.data
+package dev.sxxxi.mediastore.data.dto
 
 import com.rabbitmq.client.Delivery
 

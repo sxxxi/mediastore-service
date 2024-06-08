@@ -18,7 +18,11 @@ class ContentStoreController(
     fun getSignedUrlToPath(
         @RequestParam(name = "path", required = true) path: String
     ): ResponseEntity<ImageUrlGetResponse> {
-        return ResponseEntity.ok(ImageUrlGetResponse(storageService.get(path)))
+        return try {
+            ResponseEntity.ok(ImageUrlGetResponse.Success(storageService.get(path)))
+        } catch (e: Exception) {
+            ResponseEntity.internalServerError().body(ImageUrlGetResponse.Error(code = 500, message = e.message ?: "Mystery"))
+        }
     }
 }
 

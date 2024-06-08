@@ -1,11 +1,13 @@
 package dev.sxxxi.mediastore
 
 import com.rabbitmq.client.AMQP
-import dev.sxxxi.mediastore.data.Media
+import com.rabbitmq.client.Connection
 import dev.sxxxi.mediastore.data.Services
+import dev.sxxxi.mediastore.data.dto.Media
 import dev.sxxxi.mediastore.service.MediaStoreService
-import org.slf4j.LoggerFactory
-import org.springframework.amqp.rabbit.connection.Connection
+import jakarta.annotation.PostConstruct
+import org.slf4j.Logger
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Component
 
 /*
@@ -14,30 +16,36 @@ send response to a queue name in delivery.properties.replyTo
  */
 @Component
 class MediaReceiver(
-    connection: Connection,
-    private val mediaService: MediaStoreService
+    private val mediaService: MediaStoreService,
+    private val connection: () -> Connection,
+    private val logger: Logger
 ) {
-    private val logger = LoggerFactory.getLogger(this::class.java)
-    init {
-        val channel = connection.createChannel(false)
+    @Value("\${rabbitmq.receivers.media.queue}")
+    private lateinit var queueName: String
 
-        channel.queueDeclare(QUEUE_NAME, false, false, false, null)
-        channel.basicConsume(QUEUE_NAME, true, { _, delivery ->
-            val media = Media.from(delivery)
-            val savedPath = mediaService.store(Services.PROJECTS, media)
+    @PostConstruct
+    fun init() {
+        try {
+            logger.info("Creating MediaReceiver...")
+            val channel = connection().createChannel()
+            logger.info("Connection and channel created.")
+            channel.queueDeclare(queueName, false, false, false, null)
+            channel.basicConsume(queueName, true, { _, delivery ->
+                val media = Media.from(delivery)
+                val savedPath = mediaService.store(Services.PROJECTS, media)
 
-            logger.info(delivery.properties.correlationId)
+                logger.info(delivery.properties.correlationId)
 
-            channel.basicPublish("", delivery.properties.replyTo,
-                AMQP.BasicProperties.Builder()
-                    .contentType("text/plain")
-                    .correlationId(delivery.properties.correlationId)
-                    .build(),
-                savedPath.toByteArray(Charsets.UTF_8))
-        }) { _ -> }
-    }
+                channel.basicPublish("", delivery.properties.replyTo,
+                    AMQP.BasicProperties.Builder()
+                        .contentType("text/plain")
+                        .correlationId(delivery.properties.correlationId)
+                        .build(),
+                    savedPath.toByteArray(Charsets.UTF_8))
+            }) { _ -> }
 
-    companion object {
-        const val QUEUE_NAME = "q_media"
+        } catch (e: Exception) {
+            logger.error("Hmmm + $e")
+        }
     }
 }
